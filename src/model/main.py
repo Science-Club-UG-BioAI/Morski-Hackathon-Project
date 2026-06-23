@@ -28,15 +28,17 @@ from deckhend import deckhend
 
 app = FastAPI()
 
+
 @app.post("/full_ports/")
 def full_ports(
-    content: UploadFile = File(...), attachments: Optional[List[UploadFile]] = File(None)
+    content: UploadFile = File(...),
+    attachments: Optional[List[UploadFile]] = File(None),
 ):
     text = eml_to_clean_text(content)
     pdf_text = []
     if attachments:
         pdf_text = [extract_pdf_text(pdf) for pdf in attachments]
-    
+
     pdf_text.append(text)
 
     try:
@@ -60,7 +62,7 @@ def full_ports(
 
     ffj = deepcopy(final_json.model_dump())
     checked: dict = deckhend(ffj["imo_number"])
-    
+
     verification_conflicts = {}
 
     for key, val in checked.items():
@@ -194,7 +196,13 @@ def full_ports(
     filtered = remove_preset_category(additional_info_jsons)
 
     job_id = get_next_free_id()
-    resp = {"id": job_id, "overview": ov, "task": tasks, "Additional requests": filtered, "verification_conflicts": verification_conflicts,}
+    resp = {
+        "id": job_id,
+        "overview": ov,
+        "task": tasks,
+        "Additional requests": filtered,
+        "verification_conflicts": verification_conflicts,
+    }
     save_json(job_id, resp)
     return resp
 
@@ -215,7 +223,6 @@ def load(id: int):
         x = load_json(id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
     return x
 
 

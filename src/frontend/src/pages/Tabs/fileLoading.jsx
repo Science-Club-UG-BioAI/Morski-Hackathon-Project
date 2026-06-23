@@ -1,0 +1,145 @@
+import { useState } from "react";
+
+export default function FileLoad(){
+    const [emlFile, setEmlFile] = useState(null);
+    const [pdfFiles, setPdfFiles] = useState([]);
+    const [error, setError] = useState(null);
+    const [result, setResult] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleEmlChange = (e) => { //eml files loading
+        setError(null);
+        setResult(null);
+        const file = e.target.files[0];
+        if (!file.name.toLowerCase().endsWith(".eml")){
+            setError("The file needs to be of .eml extension");
+            setEmlFile(null);
+            return;
+        }
+        setEmlFile(file);
+    };
+
+    const handlePdfChange = (e) => { //pdfs files loading
+        setError(null);
+        setResult(null);
+        const files = Array.from(e.target.files);
+        const invalidFile = files.find(
+            (file) => !file.name.toLowerCase().endsWith(".pdf")
+        );
+        if (invalidFile){
+            setError("Detachments can only be PDF");
+            setPdfFiles([]);
+            return;
+        }
+        setPdfFiles(files);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!emlFile) {
+            setError("First add valid .eml file")
+            return;
+        }
+        setError(null);
+        setResult(null);
+        setLoading(true);
+        const formData = new FormData();
+        formData.append("content",emlFile);
+
+        pdfFiles.forEach((file) => {
+            formData.append("attachments",file);
+        });
+        try {
+            const response = await fetch("/full_ports/",{
+                method: "POST",
+                body: formData,
+            });
+            if (!response.ok){
+                setError("File's couldn't be processed")
+                return;
+            }
+            const data = await response.json();
+            setResult(data);
+        } catch {
+            setError("Failure server connection");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    return (
+    <div className="page file-load-page">
+        <section className="upload-panel">
+        <h1>Panel wczytywania danych</h1>
+
+        <p>
+            Dodaj plik wiadomości EML oraz opcjonalne załączniki PDF. Wysyłanie
+            jest możliwe dopiero po dodaniu pliku EML.
+        </p>
+
+        {error && <p className="error-msg">{error}</p>}
+
+        <form className="upload-form" onSubmit={handleSubmit}>
+            <div className="upload-box">
+            <label>
+                Plik EML
+                <input
+                type="file"
+                accept=".eml"
+                onChange={handleEmlChange}
+                />
+            </label>
+
+            {emlFile && (
+                <p className="selected-file">
+                Wybrano: {emlFile.name}
+                </p>
+            )}
+            </div>
+
+            <div className="upload-box">
+            <label>
+                Pliki PDF
+                <input
+                type="file"
+                accept=".pdf"
+                multiple
+                onChange={handlePdfChange}
+                />
+            </label>
+
+            {pdfFiles.length > 0 && (
+                <div className="selected-files">
+                <p>Wybrane pliki PDF:</p>
+
+                <ul>
+                    {pdfFiles.map((file) => (
+                    <li key={file.name}>{file.name}</li>
+                    ))}
+                </ul>
+                </div>
+            )}
+            </div>
+
+            <button
+            type="submit"
+            className="btn-primary"
+            disabled={!emlFile || loading}
+            >
+            {loading ? "Loading..." : "Send files"}
+            </button>
+        </form>
+
+        {result && (
+            <div className="result-box">
+            <h2>Odpowiedź serwera</h2>
+            <pre>{JSON.stringify(result, null, 2)}</pre>
+            </div>
+        )}
+        </section>
+    </div>
+    );
+}
+
+

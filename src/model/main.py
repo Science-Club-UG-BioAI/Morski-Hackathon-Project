@@ -2,7 +2,11 @@ from fastapi import FastAPI, UploadFile, File
 from typing import List, Optional
 
 from utils import eml_to_clean_text, extract_pdf_text
-from model import merge_email_extractions, extract_from_mail, EmailExtractionConflictError
+from model import (
+    merge_email_extractions,
+    extract_from_mail,
+    EmailExtractionConflictError,
+)
 from deckhend import deckhend
 
 
@@ -10,7 +14,9 @@ app = FastAPI()
 
 
 @app.post("/full_ports/")
-def full_ports(content: UploadFile = File(...), attachments:  Optional[List[UploadFile]] = File(...)):
+def full_ports(
+    content: UploadFile = File(...), attachments: Optional[List[UploadFile]] = File(...)
+):
     text = eml_to_clean_text(content)
     pdf_text = [extract_pdf_text(pdf) for pdf in attachments]
     pdf_text.append(text)
@@ -31,25 +37,24 @@ def full_ports(content: UploadFile = File(...), attachments:  Optional[List[Uplo
 
     if final_json:
         return {}
-    
+
     ffj = deckhend(final_json)
 
     tasks = {}
 
     FIELD_MAP = {
-    "ship_name": "Ship Name",
-    "port_name": "Target Port",
-    "eta": "Estimated Time Arrival",
-    "imo_number": "Ship IMO number",
-    "cargo_type": "Cargo Type",
-    "cargo_weight": "Cargo Weight",
-    "ship_width": "Ship Width",
-    "ship_length": "Ship Length",
-    "ship_submersion": "Ship Submersion",
-    "ship_weigth": "Ship Weight",
-    "number_of_crew_members": "Number of Crew Members",
+        "ship_name": "Ship Name",
+        "port_name": "Target Port",
+        "eta": "Estimated Time Arrival",
+        "imo_number": "Ship IMO number",
+        "cargo_type": "Cargo Type",
+        "cargo_weight": "Cargo Weight",
+        "ship_width": "Ship Width",
+        "ship_length": "Ship Length",
+        "ship_submersion": "Ship Submersion",
+        "ship_weigth": "Ship Weight",
+        "number_of_crew_members": "Number of Crew Members",
     }
-
 
     pcs = {}
 
@@ -61,7 +66,6 @@ def full_ports(content: UploadFile = File(...), attachments:  Optional[List[Uplo
         else:
             pcs[target_key] = "-"
 
-
     tasks["Fill PCS form"] = pcs
 
     # Refuel
@@ -72,8 +76,7 @@ def full_ports(content: UploadFile = File(...), attachments:  Optional[List[Uplo
 
         if ffj["fuel_category"] is not None and fuel["fuel_category"] != "":
             fuel["Fuel Type"] = ffj["fuel_category"]
-            
-        
+
         tasks["Arrange for the ship to be refueled"] = fuel
 
     # Food
@@ -105,19 +108,26 @@ def full_ports(content: UploadFile = File(...), attachments:  Optional[List[Uplo
     tasks["Arrange help for cargo handling"] = loads
 
     # Dangerous Goods
-    if ffj["hazmat_and_dangerous_goods"] is not None and ffj["hazmat_and_dangerous_goods"] != "":
-        tasks["Report the transport of hazardous goods"] = {"Description of hazardous goods:": ffj["hazmat_and_dangerous_goods"]}
-    
+    if (
+        ffj["hazmat_and_dangerous_goods"] is not None
+        and ffj["hazmat_and_dangerous_goods"] != ""
+    ):
+        tasks["Report the transport of hazardous goods"] = {
+            "Description of hazardous goods:": ffj["hazmat_and_dangerous_goods"]
+        }
+
     # Customs Clearance
     if ffj["customs_clearance"] is not None and ffj["customs_clearance"] != "":
-        tasks["Arrange customs clearance for the ship"] = {"Description of custom clarance:": ffj["customs_clearance"]}
-    
+        tasks["Arrange customs clearance for the ship"] = {
+            "Description of custom clarance:": ffj["customs_clearance"]
+        }
+
     ov = {}
     FIELD_MAP = {
         "ship_name": "Name",
         "imo_number": "IMO",
         "eta": "ETA",
-        "port_name": "Destination"
+        "port_name": "Destination",
     }
     for source_key, target_key in FIELD_MAP.items():
         value = ffj.get(source_key)
@@ -127,7 +137,4 @@ def full_ports(content: UploadFile = File(...), attachments:  Optional[List[Uplo
         else:
             ov[target_key] = "-"
 
-    return {
-        "overview": ov,
-        "task": tasks
-    }
+    return {"overview": ov, "task": tasks}

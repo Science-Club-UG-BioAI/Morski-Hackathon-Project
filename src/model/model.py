@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, Any, Iterable
 import json
 
+from utils import estimate_num_ctx
+
 SYSETM_PROMPT = """
 You are a strict maritime email and document information extraction engine.
 
@@ -30,7 +32,6 @@ Rules:
 - Do not treat food/provisions as needed unless food, provisions, catering, stores, victuals, or similar supply is explicitly requested.
 - Ignore signatures, disclaimers, legal footers, quoted previous emails, and unrelated boilerplate unless they contain relevant explicit information.
 """
-
 
 
 class EmailExtraction(BaseModel):
@@ -94,7 +95,9 @@ def _normalize_value(value: Any) -> Any:
 def merge_email_extractions(
     items: Iterable[EmailExtraction | dict | str],
 ) -> EmailExtraction:
-    merged: dict[str, Any] = {field_name: None for field_name in EmailExtraction.model_fields.keys()}
+    merged: dict[str, Any] = {
+        field_name: None for field_name in EmailExtraction.model_fields.keys()
+    }
 
     for index, item in enumerate(items):
         data = _to_dict(item)
@@ -112,10 +115,6 @@ def merge_email_extractions(
 
             if old_value != new_value:
                 merged[field_name] = new_value
-                # raise EmailExtractionConflictError(
-                #     f"Conflict in field '{field_name}' at item index {index}: "
-                #     f"existing value={old_value!r}, new value={new_value!r}"
-                # )
 
     return EmailExtraction(**merged)
 
@@ -138,7 +137,7 @@ def extract_from_mail(content: str):
         options={
             "temperature": 0,
             "top_p": 0.1,
-            "num_ctx": 8124,
+            "num_ctx": estimate_num_ctx(content),
         },
     )
 

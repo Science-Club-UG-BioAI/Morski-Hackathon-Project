@@ -1,5 +1,9 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
 from typing import List, Optional, Any
+from copy import deepcopy
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from utils import (
     eml_to_clean_text,
@@ -18,17 +22,21 @@ from model import (
     EmailExtractionConflictError,
     get_additional_tasks,
 )
+from pdf_utils import build_pdf_from_json
+
 from deckhend import deckhend
 
 app = FastAPI()
 
-
 @app.post("/full_ports/")
 def full_ports(
-    content: UploadFile = File(...), attachments: Optional[List[UploadFile]] = File(...)
+    content: UploadFile = File(...), attachments: Optional[List[UploadFile]] = File(None)
 ):
     text = eml_to_clean_text(content)
-    pdf_text = [extract_pdf_text(pdf) for pdf in attachments]
+    pdf_text = []
+    if attachments:
+        pdf_text = [extract_pdf_text(pdf) for pdf in attachments]
+    
     pdf_text.append(text)
 
     try:
@@ -36,20 +44,33 @@ def full_ports(
         additional_info_jsons = change_to_list_dict(get_additional_tasks(text))
     except Exception as e:
         print(e)
+        return
 
     final_json = None
 
     try:
         final_json = merge_email_extractions(jsons)
     except EmailExtractionConflictError as e:
-        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
-        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
 
     if final_json is None:
         return {}
 
-    ffj = deckhend(final_json)
+    ffj = deepcopy(final_json.model_dump())
+    checked: dict = deckhend(ffj["imo_number"])
+    
+    verification_conflicts = {}
+
+    for key, val in checked.items():
+        original_value = ffj.get(key)
+
+        if val is not None and original_value is not None and val != original_value:
+            verification_conflicts[key] = {
+                "extracted": original_value,
+                "verified": val,
+            }
 
     tasks = {}
 
@@ -140,10 +161,10 @@ def full_ports(
         add_hazard = find_additional_tasks_category(
             additional_info_jsons, "hazardous_goods"
         )
-        all = {"Description of hazardous goods:": ffj["hazmat_and_dangerous_goods"]}
+        _all = {"Description of hazardous goods:": ffj["hazmat_and_dangerous_goods"]}
         if add_hazard is not None:
-            all["Additional requests"] = add_hazard
-        tasks["Report the transport of hazardous goods"] = all
+            _all["Additional requests"] = add_hazard
+        tasks["Report the transport of hazardous goods"] = _all
 
     # Customs Clearance
     if ffj["customs_clearance"] is not None and ffj["customs_clearance"] != "":
@@ -172,9 +193,9 @@ def full_ports(
 
     filtered = remove_preset_category(additional_info_jsons)
 
-    id = get_next_free_id()
-    resp = {"id": id, "overview": ov, "task": tasks, "Additional requests": filtered}
-    save_json(id, resp)
+    job_id = get_next_free_id()
+    resp = {"id": job_id, "overview": ov, "task": tasks, "Additional requests": filtered, "verification_conflicts": verification_conflicts,}
+    save_json(job_id, resp)
     return resp
 
 
@@ -213,3 +234,21 @@ def save(target: dict[str, Any]):
         "ok": True,
         "id": job_id,
     }
+
+
+@app.post("/pdf/{job_id}")
+def create_pdf(job_id: int, target: dict[str, Any]):
+    try:
+        with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            output_path = Path(tmp.name)
+
+        build_pdf_from_json(target, output_path)
+
+        return FileResponse(
+            path=output_path,
+            media_type="application/pdf",
+            filename=f"port_call_{job_id}.pdf",
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

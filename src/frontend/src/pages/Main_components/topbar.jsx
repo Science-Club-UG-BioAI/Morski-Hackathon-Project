@@ -15,9 +15,9 @@ export default function Topbar({ changeTab, user, onLoginClick, onLogout }){
                 </div>
                 <div className="topbar-right">
                     <nav className="topbar-nav">
-                        <button onClick={()=> changeTab('home')}>Home</button>
-                        <button onClick={()=> changeTab('system')}>{user ? "Panel" : "System"}</button>
-                        <button onClick={()=> changeTab('help')}>Help</button>
+                        <button onClick={()=> changeTab('home')}>{user ? "Panel" : "Home"}</button>
+                        <button onClick={()=> changeTab('system')}>{user ? "Results" : "System"}</button>
+                        <button onClick={()=> changeTab('help')}>{user ? "History" : "Help"}</button>
                         {user ? (
                             <>
                                 <span className="topbar-user">{user.login}</span>

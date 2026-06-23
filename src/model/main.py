@@ -1,14 +1,24 @@
-from fastapi import FastAPI, UploadFile, File
-from typing import List, Optional
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from typing import List, Optional, Any
 
-from utils import eml_to_clean_text, extract_pdf_text
+from utils import (
+    eml_to_clean_text,
+    extract_pdf_text,
+    find_additional_tasks_category,
+    remove_preset_category,
+    change_to_list_dict,
+    get_history,
+    save_json,
+    load_json,
+    get_next_free_id,
+)
 from model import (
     merge_email_extractions,
     extract_from_mail,
     EmailExtractionConflictError,
+    get_additional_tasks,
 )
 from deckhend import deckhend
-
 
 app = FastAPI()
 
@@ -23,6 +33,7 @@ def full_ports(
 
     try:
         jsons = [extract_from_mail(contents) for contents in pdf_text]
+        additional_info_jsons = change_to_list_dict(get_additional_tasks(text))
     except Exception as e:
         print(e)
 
@@ -35,7 +46,7 @@ def full_ports(
     except Exception as e:
         print(e)
 
-    if final_json:
+    if final_json is None:
         return {}
 
     ffj = deckhend(final_json)
@@ -77,6 +88,9 @@ def full_ports(
         if ffj["fuel_category"] is not None and ffj["fuel_category"] != "":
             fuel["Fuel Type"] = ffj["fuel_category"]
 
+        fuel_add = find_additional_tasks_category(additional_info_jsons, "fuel")
+        fuel["Additional requests"] = fuel_add
+
         tasks["Arrange for the ship to be refueled"] = fuel
 
     # Food
@@ -85,7 +99,14 @@ def full_ports(
             food = "-"
         else:
             food = ffj["food_description"]
-        tasks["Arrange provisions delivery"] = {"Food details": food}
+
+        food_add = find_additional_tasks_category(additional_info_jsons, "food")
+        water_add = find_additional_tasks_category(additional_info_jsons, "water")
+        food_add.extend(water_add)
+        whole = {"Food details": food}
+        if food_add is not None:
+            whole["Additional requests"] = food_add
+        tasks["Arrange provisions delivery"] = whole
 
     # Cargo handling
     FIELD_MAP = {
@@ -104,23 +125,35 @@ def full_ports(
                 loads[target_key] = value
             else:
                 loads[target_key] = "-"
-
-    tasks["Arrange help for cargo handling"] = loads
+        cargo_handling = find_additional_tasks_category(
+            additional_info_jsons, "cargo_handling"
+        )
+        if cargo_handling is not None:
+            loads["Additional requests"] = cargo_handling
+        tasks["Arrange help for cargo handling"] = loads
 
     # Dangerous Goods
     if (
         ffj["hazmat_and_dangerous_goods"] is not None
         and ffj["hazmat_and_dangerous_goods"] != ""
     ):
-        tasks["Report the transport of hazardous goods"] = {
-            "Description of hazardous goods:": ffj["hazmat_and_dangerous_goods"]
-        }
+        add_hazard = find_additional_tasks_category(
+            additional_info_jsons, "hazardous_goods"
+        )
+        all = {"Description of hazardous goods:": ffj["hazmat_and_dangerous_goods"]}
+        if add_hazard is not None:
+            all["Additional requests"] = add_hazard
+        tasks["Report the transport of hazardous goods"] = all
 
     # Customs Clearance
     if ffj["customs_clearance"] is not None and ffj["customs_clearance"] != "":
-        tasks["Arrange customs clearance for the ship"] = {
-            "Description of custom clarance:": ffj["customs_clearance"]
-        }
+        add_customs = find_additional_tasks_category(additional_info_jsons, "customs")
+        all_customs = {"Description of custom clarance:": ffj["customs_clearance"]}
+
+        if add_customs is not None:
+            all_customs["Additional requests"] = add_customs
+
+        tasks["Arrange customs clearance for the ship"] = all_customs
 
     ov = {}
     FIELD_MAP = {
@@ -137,4 +170,46 @@ def full_ports(
         else:
             ov[target_key] = "-"
 
-    return {"overview": ov, "task": tasks}
+    filtered = remove_preset_category(additional_info_jsons)
+
+    id = get_next_free_id()
+    resp = {"id": id, "overview": ov, "task": tasks, "Additional requests": filtered}
+    save_json(id, resp)
+    return resp
+
+
+@app.get("/history/")
+def history():
+    try:
+        resp = get_history()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return resp
+
+
+@app.get("/load/")
+def load(id: int):
+    try:
+        x = load_json(id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return x
+
+
+@app.post("/save/")
+def save(target: dict[str, Any]):
+    try:
+        job_id = get_next_free_id()
+        save_json(job_id, target)
+
+    except FileExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "ok": True,
+        "id": job_id,
+    }

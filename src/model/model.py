@@ -1,11 +1,11 @@
 from ollama import chat
-from pydantic import BaseModel
-from typing import Optional, Any, Iterable
+from pydantic import BaseModel, Field
+from typing import Optional, Any, Iterable, Literal
 import json
 
 from utils import estimate_num_ctx
 
-SYSETM_PROMPT = """
+SYSETM_PROMPT_EXTRACTION = """
 You are a strict maritime email and document information extraction engine.
 
 Your task is to extract structured information from ship-related emails, PDF text, and attachments.
@@ -31,6 +31,41 @@ Rules:
 - Do not treat fuel type or fuel amount as a refueling request unless refueling, bunkering, or fuel supply is explicitly requested.
 - Do not treat food/provisions as needed unless food, provisions, catering, stores, victuals, or similar supply is explicitly requested.
 - Ignore signatures, disclaimers, legal footers, quoted previous emails, and unrelated boilerplate unless they contain relevant explicit information.
+"""
+
+SYSTEM_PROMPT_ADDITIONAL_TASKS = """
+You are a strict maritime email and document task extraction engine.
+
+Your task is to extract explicit actionable requests, tasks, instructions, or requirements
+from ship-related emails, PDF text, and attachments.
+
+Extract only requests that are explicitly present in the provided text.
+Do not guess, infer, assume, or create tasks from context.
+If no explicit additional requests are present, return an empty list.
+
+Return valid JSON only.
+Do not include explanations, markdown, comments, or extra text.
+
+Definitions:
+- A request/task is something the sender asks someone to do, arrange, confirm, prepare, provide, send, check, book, notify, handle, or organize.
+- A request may be direct, for example: "Please arrange bunkering."
+- A request may also be polite or indirect, for example: "Could you confirm berth availability?"
+- Do not extract pure facts as requests.
+- Do not extract ETA, ship dimensions, cargo description, IMO number, or crew count unless the text explicitly asks for an action related to them.
+- Do not treat a cargo description as loading/unloading unless loading or unloading is explicitly requested.
+- Do not treat a fuel amount or fuel type as a bunkering/refueling request unless bunkering, refueling, fuel supply, or similar action is explicitly requested.
+- Ignore signatures, disclaimers, legal footers, quoted previous emails, and unrelated boilerplate unless they contain relevant explicit requests.
+
+For each extracted request:
+- request: short description of the action, preserving the meaning from the source text.
+- category: choose the best category from the schema.
+- evidence: exact text span copied from the source that supports the request.
+- confidence:
+  - high: explicit and unambiguous request,
+  - medium: explicit but wording is slightly indirect,
+  - low: present but weakly phrased or partially ambiguous.
+
+Every extracted request must have exact evidence copied from the source text.
 """
 
 
@@ -64,6 +99,38 @@ class EmailExtraction(BaseModel):
     customs_clearance: Optional[str]
 
 
+class AdditionalRequest(BaseModel):
+    request: str = Field(
+        description="A single explicit actionable request or task from the text."
+    )
+    category: Literal[
+        "fuel",
+        "food",
+        "water",
+        "cargo_handling",
+        "hazardous_goods",
+        "customs",
+        "crew",
+        "documents",
+        "berth",
+        "repairs",
+        "waste_disposal",
+        "other",
+    ]
+    evidence: str = Field(
+        description="Exact text span copied from the source text that supports this request."
+    )
+    confidence: Literal["low", "medium", "high"]
+
+
+class AdditionalTasksExtraction(BaseModel):
+    additional_requests: list[AdditionalRequest] = Field(
+        default_factory=list,
+        description="List of explicit additional requests/tasks found in the text. Empty list if none.",
+    )
+
+
+additional_tasks_schema = AdditionalTasksExtraction.model_json_schema()
 schema = EmailExtraction.model_json_schema()
 
 
@@ -119,14 +186,14 @@ def merge_email_extractions(
     return EmailExtraction(**merged)
 
 
-def extract_from_mail(content: str):
+def extract_from_mail(content: str) -> EmailExtraction:
     response = chat(
         model="qwen3:4b",
         think=False,
         messages=[
             {
                 "role": "system",
-                "content": SYSETM_PROMPT,
+                "content": SYSETM_PROMPT_EXTRACTION,
             },
             {
                 "role": "user",
@@ -142,3 +209,46 @@ def extract_from_mail(content: str):
     )
 
     return EmailExtraction.model_validate_json(response["message"]["content"])
+
+
+def remove_unverified_additional_requests(
+    result: AdditionalTasksExtraction,
+    content: str,
+) -> AdditionalTasksExtraction:
+    verified_requests = []
+
+    for item in result.additional_requests:
+        if item.evidence and item.evidence in content:
+            verified_requests.append(item)
+
+    result.additional_requests = verified_requests
+    return result
+
+
+def get_additional_tasks(content: str) -> AdditionalTasksExtraction:
+    response = chat(
+        model="qwen3:4b",
+        think=False,
+        messages=[
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT_ADDITIONAL_TASKS,
+            },
+            {
+                "role": "user",
+                "content": content,
+            },
+        ],
+        format=additional_tasks_schema,
+        options={
+            "temperature": 0,
+            "top_p": 0.1,
+            "num_ctx": estimate_num_ctx(content),
+        },
+    )
+
+    result = AdditionalTasksExtraction.model_validate_json(
+        response["message"]["content"]
+    )
+
+    return remove_unverified_additional_requests(result, content)

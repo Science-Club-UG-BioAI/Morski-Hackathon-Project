@@ -74,7 +74,7 @@ def full_ports(
         if ffj["fuel_amount"] is not None and ffj["fuel_amount"] != "":
             fuel["Fuel Amount"] = ffj["fuel_amount"]
 
-        if ffj["fuel_category"] is not None and fuel["fuel_category"] != "":
+        if ffj["fuel_category"] is not None and ffj["fuel_category"] != "":
             fuel["Fuel Type"] = ffj["fuel_category"]
 
         tasks["Arrange for the ship to be refueled"] = fuel

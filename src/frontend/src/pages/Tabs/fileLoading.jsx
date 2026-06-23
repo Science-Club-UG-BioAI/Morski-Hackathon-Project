@@ -50,17 +50,21 @@ export default function FileLoad(){
             formData.append("attachments",file);
         });
         try {
-            const response = await fetch("/full_ports/",{
+            const response = await fetch("http://localhost:8000/full_ports/",{
                 method: "POST",
                 body: formData,
             });
+            console.log("Status: ",response.status);
+            console.log("Czy ok: ",response.ok);
+            const data = await response.json();
+            console.log("JSON GOT: ",data);
             if (!response.ok){
-                setError("File's couldn't be processed")
+                setError(data.detail || "Nie udało się przetworzyć plików");
                 return;
             }
-            const data = await response.json();
             setResult(data);
-        } catch {
+        } catch (err){
+            console.error("Błąd fetch albo parsowania JSON:", err);
             setError("Failure server connection");
         } finally {
             setLoading(false);

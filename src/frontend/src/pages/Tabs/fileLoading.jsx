@@ -1,15 +1,13 @@
 import { useState } from "react";
 
-export default function FileLoad(){
+export default function FileLoad({ onResult }){
     const [emlFile, setEmlFile] = useState(null);
     const [pdfFiles, setPdfFiles] = useState([]);
     const [error, setError] = useState(null);
-    const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
 
     const handleEmlChange = (e) => { //eml files loading
         setError(null);
-        setResult(null);
         const file = e.target.files[0];
         if (!file.name.toLowerCase().endsWith(".eml")){
             setError("The file needs to be of .eml extension");
@@ -21,7 +19,6 @@ export default function FileLoad(){
 
     const handlePdfChange = (e) => { //pdfs files loading
         setError(null);
-        setResult(null);
         const files = Array.from(e.target.files);
         const invalidFile = files.find(
             (file) => !file.name.toLowerCase().endsWith(".pdf")
@@ -41,7 +38,6 @@ export default function FileLoad(){
             return;
         }
         setError(null);
-        setResult(null);
         setLoading(true);
         const formData = new FormData();
         formData.append("content",emlFile);
@@ -54,15 +50,16 @@ export default function FileLoad(){
                 method: "POST",
                 body: formData,
             });
-            console.log("Status: ",response.status);
-            console.log("Czy ok: ",response.ok);
-            const data = await response.json();
-            console.log("JSON GOT: ",data);
+            
+            const payload = await response.json();
+            console.log(payload);
             if (!response.ok){
-                setError(data.detail || "Nie udało się przetworzyć plików");
+                console.error("problem janka", payload);
                 return;
             }
-            setResult(data);
+            
+            console.log("MODEL RESULT:", payload);
+            onResult(payload)
         } catch (err){
             console.error("Błąd fetch albo parsowania JSON:", err);
             setError("Failure server connection");
@@ -134,13 +131,6 @@ export default function FileLoad(){
             {loading ? "Loading..." : "Send files"}
             </button>
         </form>
-
-        {result && (
-            <div className="result-box">
-            <h2>Odpowiedź serwera</h2>
-            <pre>{JSON.stringify(result, null, 2)}</pre>
-            </div>
-        )}
         </section>
     </div>
     );

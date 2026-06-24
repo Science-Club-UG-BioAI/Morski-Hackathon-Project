@@ -37,145 +37,183 @@ const expectedTasks = {
     ],
 };
 // TEST JSON TO DELETE LATER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-const exampleData = {
-    overview: {
-        Name: "M/V Northern Wind",
-        IMO: "9876543",
-        ETA: "12 August 2026 at about 06:00 local time",
-        Destination: "Hamburg",
-    },
-    task: {
-        "Fill PCS form": {
-            "Ship Name": "M/V Northern Wind",
-            "Target Port": "Hamburg",
-            "Estimated Time Arrival": "12 August 2026 at about 06:00 local time",
-            "Ship IMO number": "9876543",
-            "Cargo Type": "steel coils",
-            "Cargo Weight": "8,500 metric tons",
-            "Ship Width": "30.2 m",
-            "Ship Length": "199.5 m",
-            "Ship Submersion": "8.1 m",
-            "Ship Weight": "35870 GT",
-            "Number of Crew Members": "27",
-        },
-        "Arrange for the ship to be refueled": {
-            "Fuel Amount": "300 MT VLSFO",
-            "Fuel Type": "VLSFO",
-            "Additional requests": [
-                {
-                    request: "confirm whether MGO is available",
-                    category: "fuel",
-                    evidence:
-                        "Please also confirm whether MGO is available, but do not order MGO at this stage.",
-                    confidence: "high",
-                },
-            ],
-        },
-        "Arrange provisions delivery": {
-            "Food details":
-                "fresh vegetables, rice, meat, bread, drinking water, and basic cleaning supplies",
-            "Additional requests": [],
-        },
-        "Arrange help for cargo handling": {
-            "Needs help Unloading": true,
-            "Needs help loading": true,
-            Type: "steel coils",
-            Weight: "8,500 metric tons",
-            "Additional requests": [
-                {
-                    request: "arrange discharge of the steel coils upon arrival",
-                    category: "cargo_handling",
-                    evidence: "Please arrange discharge of the steel coils upon arrival.",
-                    confidence: "high",
-                },
-                {
-                    request:
-                        "arrange loading of 2,000 MT of packed machinery parts for the next voyage",
-                    category: "cargo_handling",
-                    evidence:
-                        "After discharge, please also arrange loading of 2,000 MT of packed machinery parts for the next voyage.",
-                    confidence: "high",
-                },
-            ],
-        },
-        "Report the transport of hazardous goods": {
-            "Description of hazardous goods:":
-                "12 containers marked as hazardous goods, classified as IMO Class 3 flammable liquid",
-            "Additional requests": [
-                {
-                    request:
-                        "confirm whether any additional dangerous goods declaration is required for the IMO Class 3 containers",
-                    category: "hazardous_goods",
-                    evidence:
-                        "Please handle customs clearance before arrival and confirm whether any additional dangerous goods declaration is required for the IMO Class 3 containers.",
-                    confidence: "high",
-                },
-            ],
-        },
-        "Arrange customs clearance for the ship": {
-            "Description of custom clarance:":
-                "handle customs clearance before arrival and confirm whether any additional dangerous goods declaration is required for the IMO Class 3 containers",
-            "Additional requests": [
-                {
-                    request: "handle customs clearance before arrival",
-                    category: "customs",
-                    evidence: "Please handle customs clearance before arrival",
-                    confidence: "high",
-                },
-            ],
-        },
-    },
-    "Additional requests": [
-        {
-            request: "bunkering of 300 MT VLSFO during the port stay",
-            category: "berth",
-            evidence: "We request bunkering of 300 MT VLSFO during the port stay.",
-            confidence: "high",
-        },
-        {
-            request: "supply provisions for the crew",
-            category: "crew",
-            evidence:
-                "Please supply provisions for the crew, including fresh vegetables, rice, meat, bread, drinking water, and basic cleaning supplies.",
-            confidence: "high",
-        },
-        {
-            request: "arrange 10 pallets of bottled water separately for deck operations",
-            category: "crew",
-            evidence:
-                "Additionally, please arrange 10 pallets of bottled water separately for deck operations.",
-            confidence: "high",
-        },
-        {
-            request: "confirm berth availability for 12 August 2026",
-            category: "berth",
-            evidence:
-                "Please confirm berth availability for 12 August 2026, preferably before 10 August 2026.",
-            confidence: "high",
-        },
-        {
-            request:
-                "prepare all port entry documents and send the required forms to the Master before arrival",
-            category: "documents",
-            evidence:
-                "Please prepare all port entry documents and send the required forms to the Master before arrival.",
-            confidence: "high",
-        },
-        {
-            request: "inspect the auxiliary generator during the port stay",
-            category: "repairs",
-            evidence:
-                "The Chief Engineer also asks whether a technician can inspect the auxiliary generator during the port stay.",
-            confidence: "medium",
-        },
-        {
-            request: "arrange garbage disposal and sludge removal if available",
-            category: "waste_disposal",
-            evidence: "Please arrange garbage disposal and sludge removal if available.",
-            confidence: "high",
-        },
-    ],
+const emptyResultData = {
+    job_id: null,
+    overview: {},
+    task: {},
+    "Additional requests": [],
 };
+
+function parseMaybeJson(value) {
+    let parsed = value;
+
+    for (let i = 0; i < 3; i++) {
+        if (typeof parsed !== "string") {
+            return parsed;
+        }
+
+        try {
+            parsed = JSON.parse(parsed);
+        } catch {
+            return parsed;
+        }
+    }
+
+    return parsed;
+}
+
+function unwrapModelResponse(resultData) {
+    let parsed = parseMaybeJson(resultData);
+
+    if (!parsed || typeof parsed !== "object") {
+        return {};
+    }
+
+    const wrapperKeys = [
+        "result",
+        "results",
+        "data",
+        "output",
+        "response",
+        "payload",
+        "content",
+        "message",
+        "model_response",
+        "modelResponse",
+        "json",
+    ];
+
+    let changed = true;
+
+    while (changed) {
+        changed = false;
+
+        parsed = parseMaybeJson(parsed);
+
+        if (!parsed || typeof parsed !== "object") {
+            return {};
+        }
+
+        for (const key of wrapperKeys) {
+            if (parsed[key] !== undefined) {
+                parsed = parsed[key];
+                changed = true;
+                break;
+            }
+        }
+    }
+
+    return parsed;
+}
+
+function getValueByPossibleKeys(object, keys) {
+    for (const key of keys) {
+        if (object?.[key] !== undefined) {
+            return object[key];
+        }
+    }
+
+    return undefined;
+}
+
+function normalizeTasks(taskData) {
+    if (!taskData) {
+        return {};
+    }
+
+    if (typeof taskData === "string") {
+        taskData = parseMaybeJson(taskData);
+    }
+
+    if (Array.isArray(taskData)) {
+        return Object.fromEntries(
+            taskData
+                .map((item) => {
+                    const taskName =
+                        item.taskName ||
+                        item.task ||
+                        item.name ||
+                        item.title;
+
+                    const fields =
+                        item.fields ||
+                        item.data ||
+                        item.values ||
+                        item;
+
+                    return [taskName, fields];
+                })
+                .filter(([taskName]) => Boolean(taskName))
+        );
+    }
+
+    if (typeof taskData === "object") {
+        return taskData;
+    }
+
+    return {};
+}
+
+function normalizeAdditionalRequests(additionalRequests) {
+    if (!additionalRequests) {
+        return [];
+    }
+
+    if (typeof additionalRequests === "string") {
+        additionalRequests = parseMaybeJson(additionalRequests);
+    }
+
+    if (Array.isArray(additionalRequests)) {
+        return additionalRequests;
+    }
+
+    return [];
+}
+
+function parseResultData(resultData) {
+    const rawParsed = parseMaybeJson(resultData);
+    const parsed = unwrapModelResponse(resultData);
+
+    console.log("RAW RESULT DATA:", resultData);
+    console.log("PARSED RESULT DATA:", parsed);
+
+    if (!parsed || typeof parsed !== "object") {
+        return emptyResultData;
+    }
+
+    const overview =
+        getValueByPossibleKeys(parsed, [
+            "overview",
+            "Overview",
+            "ship_overview",
+            "shipOverview",
+            "Ship overview",
+        ]) || {};
+
+    const task =
+        getValueByPossibleKeys(parsed, [
+            "task",
+            "tasks",
+            "Task",
+            "Tasks",
+        ]) || {};
+
+    const additionalRequests =
+        getValueByPossibleKeys(parsed, [
+            "Additional requests",
+            "Additional Requests",
+            "additional_requests",
+            "additionalRequests",
+            "additional requests",
+        ]) || [];
+
+    return {
+        job_id: rawParsed?.job_id ?? parsed?.job_id ?? rawParsed?.id ?? parsed?.id,
+        overview: typeof overview === "object" && !Array.isArray(overview) ? overview : {},
+        task: normalizeTasks(task),
+        "Additional requests": normalizeAdditionalRequests(additionalRequests),
+    };
+}
 
 function normalizeValue(value) {
     if (value === undefined || value === null || value === "") {
@@ -341,7 +379,7 @@ function shouldShowConfidence(item) {
 
 
 export default function ResultsPriv({ user, resultData }) {
-    const data = resultData || exampleData;
+    const data = useMemo(()=> parseResultData(resultData),[resultData]);
 
     const resultsTopRef = useRef(null);
     const additionalSectionRef = useRef(null);
@@ -519,17 +557,26 @@ export default function ResultsPriv({ user, resultData }) {
 
     const API_URL = "http://localhost:8000";
     const getJobId = () => {
-        const imo = Number(data.overview?.IMO);
+        const rawResultData = parseMaybeJson(resultData);
 
-        if (Number.isInteger(imo)) {
-            return imo;
+        const jobId =
+            data?.job_id ??
+            rawResultData?.job_id;
+
+        if (jobId === undefined || jobId === null || jobId === "") {
+            console.error("Missing job_id. data:", data);
+            console.error("Missing job_id. resultData:", resultData);
+            return null;
         }
 
-        return Date.now();
+        return Number(jobId);
     };
 
     const buildBasicPdfJson = () => {
+        const jobId = getJobId();
+
         return {
+            job_id: jobId,
             overview: {
                 Name: normalizeValue(data.overview?.Name),
                 IMO: normalizeValue(data.overview?.IMO),
@@ -583,7 +630,19 @@ export default function ResultsPriv({ user, resultData }) {
     const sendPdfJsonTest = async (target, typeName) => {
         const jobId = getJobId();
 
-        console.log(`Sending ${typeName} JSON:`, target);
+        if (!jobId) {
+            console.error("Próba wygenerowania PDF bez poprawnego Job ID");
+            return;
+        }
+
+        // Tworzymy payload zwierający zarówno 'id' jak i 'job_id' na poziomie głównym
+        const pdfPayload = {
+            ...target,
+            id: jobId,     // <--- Poprawka: Dodajemy "id" dla funkcji build_pdf_from_json
+            job_id: jobId, // <--- Zostawiamy dla spójności wstecznej
+        };
+
+        console.log(`Sending ${typeName} JSON:`, pdfPayload);
 
         try {
             const response = await fetch(`${API_URL}/pdf/${jobId}`, {
@@ -591,22 +650,32 @@ export default function ResultsPriv({ user, resultData }) {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(target),
+                body: JSON.stringify(pdfPayload),
             });
 
             console.log("Response status:", response.status);
             console.log("Response ok:", response.ok);
 
-            const data = await response.json();
-
-            console.log("Backend response:", data);
-
             if (!response.ok) {
-                console.error("Backend error:", data);
+                const errorText = await response.text();
+                console.error("Backend error:", errorText);
                 return;
             }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = `port_call_${jobId}_${typeName}.pdf`;
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            window.URL.revokeObjectURL(url);
         } catch (err) {
-            console.error("JSON send error:", err);
+            console.error("PDF send/download error:", err);
         }
     };
 

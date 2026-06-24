@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Any
 from copy import deepcopy
 from pathlib import Path
@@ -27,14 +28,23 @@ from pdf_utils import build_pdf_from_json
 from deckhend import deckhend
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/full_ports/")
-def full_ports(
+async def full_ports(
     content: UploadFile = File(...),
     attachments: Optional[List[UploadFile]] = File(None),
 ):
-    text = eml_to_clean_text(content)
+    
+    file = await content.read()
+    text = eml_to_clean_text(file)
     pdf_text = []
     if attachments:
         pdf_text = [extract_pdf_text(pdf) for pdf in attachments]
@@ -43,6 +53,7 @@ def full_ports(
 
     try:
         jsons = [extract_from_mail(contents) for contents in pdf_text]
+        print(jsons)
         additional_info_jsons = change_to_list_dict(get_additional_tasks(text))
     except Exception as e:
         print(e)
@@ -171,7 +182,7 @@ def full_ports(
     # Customs Clearance
     if ffj["customs_clearance"] is not None and ffj["customs_clearance"] != "":
         add_customs = find_additional_tasks_category(additional_info_jsons, "customs")
-        all_customs = {"Description of custom clarance:": ffj["customs_clearance"]}
+        all_customs = {"Description of custom clearance:": ffj["customs_clearance"]}
 
         if add_customs is not None:
             all_customs["Additional requests"] = add_customs
@@ -246,9 +257,9 @@ def save(target: dict[str, Any]):
 @app.post("/pdf/{job_id}")
 def create_pdf(job_id: int, target: dict[str, Any]):
     try:
-        with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            output_path = Path(tmp.name)
-
+        # with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        #     output_path = Path(tmp.name)
+        output_path = Path("dupa.pdf")
         build_pdf_from_json(target, output_path)
 
         return FileResponse(

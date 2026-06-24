@@ -44,12 +44,15 @@ async def full_ports(
     content: UploadFile = File(...),
     attachments: Optional[List[UploadFile]] = File(None),
 ):
-
     file = await content.read()
     text = eml_to_clean_text(file)
+
     pdf_text = []
+
     if attachments:
-        pdf_text = [extract_pdf_text(pdf) for pdf in attachments]
+        for attachment in attachments:
+            pdf_bytes = await attachment.read()
+            pdf_text.append(extract_pdf_text(pdf_bytes))
 
     pdf_text.append(text)
 
@@ -57,10 +60,12 @@ async def full_ports(
         jsons = [extract_from_mail(contents) for contents in pdf_text]
         print(jsons)
         additional_info_jsons = change_to_list_dict(get_additional_tasks(text))
+
     except Exception as e:
         print(e)
         return
 
+    print(jsons)
     final_json = None
 
     try:
@@ -217,6 +222,7 @@ async def full_ports(
         "verification_conflicts": verification_conflicts,
     }
     save_json(job_id, resp)
+    print(resp)
     return resp
 
 

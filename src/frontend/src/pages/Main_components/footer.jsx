@@ -8,6 +8,9 @@ export default function Footer(){
                 <p className="footer-text">
                     kodON is system administrator.
                 </p>
+                <p className="footer-text">
+                    <a href="https://www.kodon.pl/">www.kodon.pl</a>
+                </p>
             </div>
         </footer>
     );

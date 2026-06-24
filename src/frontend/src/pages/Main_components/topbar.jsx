@@ -7,6 +7,7 @@ export default function Topbar({ changeTab, user, onLoginClick, onLogout }){
                 <div className="topbar-left">
                     <div className="topbar-logo">
                         <div className="logo-image">
+                            <img src="logo_seagull.png" className='logo-img'></img>
                             <div className="logo-text">
                                 <span className="logo-subtitle">Larinae</span>
                             </div>

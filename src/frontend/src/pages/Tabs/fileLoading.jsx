@@ -72,11 +72,10 @@ export default function FileLoad({ onResult }){
     return (
     <div className="page file-load-page">
         <section className="upload-panel">
-        <h1>Panel wczytywania danych</h1>
+        <h1>Data Upload Panel</h1>
 
         <p>
-            Dodaj plik wiadomości EML oraz opcjonalne załączniki PDF. Wysyłanie
-            jest możliwe dopiero po dodaniu pliku EML.
+            Add an EML message file and optional PDF attachments. Uploading is available only after an EML file has been added.
         </p>
 
         {error && <p className="error-msg">{error}</p>}
@@ -84,7 +83,7 @@ export default function FileLoad({ onResult }){
         <form className="upload-form" onSubmit={handleSubmit}>
             <div className="upload-box">
             <label>
-                Plik EML
+                EML file
                 <input
                 type="file"
                 accept=".eml"
@@ -94,7 +93,7 @@ export default function FileLoad({ onResult }){
 
             {emlFile && (
                 <p className="selected-file">
-                Wybrano: {emlFile.name}
+                Chosen: {emlFile.name}
                 </p>
             )}
             </div>
@@ -112,7 +111,7 @@ export default function FileLoad({ onResult }){
 
             {pdfFiles.length > 0 && (
                 <div className="selected-files">
-                <p>Wybrane pliki PDF:</p>
+                <p>Chosen PDF files:</p>
 
                 <ul>
                     {pdfFiles.map((file) => (

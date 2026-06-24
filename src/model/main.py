@@ -1,9 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from starlette.background import BackgroundTask
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Any
 from copy import deepcopy
 from pathlib import Path
+import os
 from tempfile import NamedTemporaryFile
 
 from utils import (
@@ -42,7 +44,7 @@ async def full_ports(
     content: UploadFile = File(...),
     attachments: Optional[List[UploadFile]] = File(None),
 ):
-    
+
     file = await content.read()
     text = eml_to_clean_text(file)
     pdf_text = []
@@ -256,17 +258,23 @@ def save(target: dict[str, Any]):
 
 @app.post("/pdf/{job_id}")
 def create_pdf(job_id: int, target: dict[str, Any]):
+    output_path: Path | None = None
+
     try:
-        # with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        #     output_path = Path(tmp.name)
-        output_path = Path("dupa.pdf")
+        with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            output_path = Path(tmp.name)
+
         build_pdf_from_json(target, output_path)
 
         return FileResponse(
             path=output_path,
             media_type="application/pdf",
             filename=f"port_call_{job_id}.pdf",
+            background=BackgroundTask(os.remove, output_path),
         )
 
     except Exception as e:
+        if output_path is not None and output_path.exists():
+            output_path.unlink(missing_ok=True)
+
         raise HTTPException(status_code=500, detail=str(e))

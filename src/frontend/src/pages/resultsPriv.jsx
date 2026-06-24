@@ -36,12 +36,42 @@ const expectedTasks = {
         "Description of custom clarance:",
     ],
 };
+
+const verificationFieldMap = {
+    ship_name: "Ship Name",
+    ship_width: "Ship Width",
+    ship_length: "Ship Length",
+    ship_submersion: "Ship Submersion",
+    ship_weight: "Ship Weight",
+};
+
+const verificationLabelToKey = Object.fromEntries(
+    Object.entries(verificationFieldMap).map(([sourceKey, fieldLabel]) => [
+        fieldLabel,
+        sourceKey,
+    ])
+);
+
+function getVerificationConflict(data, taskName, fieldName) {
+    if (taskName !== "Fill PCS form") {
+        return null;
+    }
+
+    const sourceKey = verificationLabelToKey[fieldName];
+
+    if (!sourceKey) {
+        return null;
+    }
+
+    return data.verification_conflicts?.[sourceKey] || null;
+}
 // TEST JSON TO DELETE LATER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 const emptyResultData = {
     job_id: null,
     overview: {},
     task: {},
     "Additional requests": [],
+    verification_conflicts: {},
 };
 
 function parseMaybeJson(value) {
@@ -207,11 +237,23 @@ function parseResultData(resultData) {
             "additional requests",
         ]) || [];
 
+    const verificationConflicts = 
+        getValueByPossibleKeys(parsed,[
+            "verification_conflicts",
+            "verificationConflicts",
+            "Verification conflicts",
+            "Verification Conflicts",
+        ]) || {};
+
     return {
         job_id: rawParsed?.job_id ?? parsed?.job_id ?? rawParsed?.id ?? parsed?.id,
         overview: typeof overview === "object" && !Array.isArray(overview) ? overview : {},
         task: normalizeTasks(task),
         "Additional requests": normalizeAdditionalRequests(additionalRequests),
+        verification_conflicts:
+            typeof verificationConflicts === "object" && !Array.isArray(verificationConflicts)
+                ? verificationConflicts
+                : {},
     };
 }
 
@@ -965,23 +1007,55 @@ export default function ResultsPriv({ user, resultData }) {
 
                                         {hasFields && !isCollapsed && (
                                             <div className="form-fields">
-                                                {Object.entries(fields).map(([fieldName, value]) => (
-                                                    <label className="form-field" key={fieldName}>
-                                                        <span>{fieldName}</span>
+                                                {Object.entries(fields).map(([fieldName, value]) => {
+                                                    const verificationConflict =
+                                                        getVerificationConflict(data, taskName, fieldName);
 
-                                                        <input
-                                                            value={value}
-                                                            readOnly={!isEditing}
-                                                            onChange={(e) =>
-                                                                handleFieldChange(
-                                                                    taskName,
-                                                                    fieldName,
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                        />
-                                                    </label>
-                                                ))}
+                                                    return (
+                                                        <label
+                                                            className={`form-field ${
+                                                                verificationConflict
+                                                                    ? "form-field-verification-warning"
+                                                                    : ""
+                                                            }`}
+                                                            key={fieldName}
+                                                        >
+                                                            <span className="form-field-label-row">
+                                                                <span>{fieldName}</span>
+
+                                                                {verificationConflict && (
+                                                                    <span className="verification-warning-badge">
+                                                                        Different verified value
+                                                                    </span>
+                                                                )}
+                                                            </span>
+
+                                                            <input
+                                                                value={value}
+                                                                readOnly={!isEditing}
+                                                                onChange={(e) =>
+                                                                    handleFieldChange(
+                                                                        taskName,
+                                                                        fieldName,
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                            />
+
+                                                            {verificationConflict && (
+                                                                <div className="verification-warning-box">
+                                                                    <strong>Ship database has different data.</strong>
+                                                                    <span>
+                                                                        Extracted: {normalizeValue(verificationConflict.extracted)}
+                                                                    </span>
+                                                                    <span>
+                                                                        Verified: {normalizeValue(verificationConflict.verified)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>

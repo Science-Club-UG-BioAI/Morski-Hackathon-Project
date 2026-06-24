@@ -70,7 +70,7 @@ def build_key_value_table(data: dict[str, Any], styles: dict) -> Table:
         if isinstance(value, dict) and "extracted" in value and "verified" in value:
             value_text = (
                 f"<b>Extracted:</b> {escape_text(value['extracted'])}<br/>"
-                f"<b><font color='red'>Verified:</b>{escape_text(value['verified'])}</font>"
+                f"<font color='red'><b>Verified:</b>{escape_text(value['verified'])}</font>"
             )
             allow_markup = True
 

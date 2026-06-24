@@ -1,18 +1,6 @@
-/* ========================================================================== 
-   Larinae Design System
-   Desktop UI for maritime agency nomination workflow
-   --------------------------------------------------------------------------
-   Drop this file into: src/css/App.css
-   This stylesheet preserves existing React class names and adds reusable
-   component classes for future pages: panels, tables, forms, badges and alerts.
-   ========================================================================== */
 
-/* ========================================================================== 
-   1. Design tokens
-   ========================================================================== */
 
 :root {
-  /* Core palette: navy/sea blue, white, neutral gray. */
   --color-navy-950: #071827;
   --color-navy-900: #0b1f33;
   --color-navy-800: #12324f;
@@ -33,7 +21,6 @@
   --color-gray-100: #f5f7fa;
   --color-gray-50: #f8fafc;
 
-  /* Semantic colors are intentionally muted to keep the system corporate. */
   --color-success-bg: #e7f3ee;
   --color-success-text: #1f6045;
   --color-warning-bg: #f6efe1;
@@ -105,10 +92,6 @@
   --z-modal: 1000;
   --z-floating: 900;
 }
-
-/* ========================================================================== 
-   2. Reset and base
-   ========================================================================== */
 
 *,
 *::before,
@@ -232,10 +215,6 @@ svg {
   max-width: 100%;
 }
 
-/* ========================================================================== 
-   3. Layout primitives
-   ========================================================================== */
-
 .page {
   width: min(var(--page-max-width), calc(100vw - 64px));
   margin: 0 auto;
@@ -326,10 +305,6 @@ svg {
 .full-width {
   grid-column: 1 / -1;
 }
-
-/* ========================================================================== 
-   4. Topbar navigation
-   ========================================================================== */
 
 .topbar {
   position: sticky;
@@ -445,10 +420,6 @@ svg {
   display: none;
 }
 
-/* ========================================================================== 
-   5. Buttons
-   ========================================================================== */
-
 button,
 [type="button"],
 [type="submit"] {
@@ -535,9 +506,6 @@ textarea:disabled {
   opacity: 0.58;
 }
 
-/* ========================================================================== 
-   6. Forms and inputs
-   ========================================================================== */
 
 label {
   color: var(--color-gray-800);
@@ -674,10 +642,6 @@ input[type="file"]::file-selector-button {
   font-weight: 650;
 }
 
-/* ========================================================================== 
-   7. Upload panel
-   ========================================================================== */
-
 .file-load-page {
   display: flex;
   align-items: flex-start;
@@ -754,9 +718,6 @@ input[type="file"]::file-selector-button {
   margin-top: var(--space-1);
 }
 
-/* ========================================================================== 
-   8. Modal and login
-   ========================================================================== */
 
 .modal-backdrop {
   position: fixed;
@@ -835,9 +796,6 @@ input[type="file"]::file-selector-button {
   margin-top: var(--space-2);
 }
 
-/* ========================================================================== 
-   9. Results page: overview and split layout
-   ========================================================================== */
 
 .page-results-private {
   width: min(1680px, calc(100vw - 64px));
@@ -931,9 +889,6 @@ input[type="file"]::file-selector-button {
   min-height: 620px;
 }
 
-/* ========================================================================== 
-   10. To-do list
-   ========================================================================== */
 
 .todo-section-header {
   display: flex;
@@ -1083,9 +1038,6 @@ input[type="file"]::file-selector-button {
   margin-bottom: 0;
 }
 
-/* ========================================================================== 
-   11. Form preview and additional requests
-   ========================================================================== */
 
 .preview-top {
   display: flex;
@@ -1231,10 +1183,6 @@ input[type="file"]::file-selector-button {
   color: var(--text-secondary);
 }
 
-/* ========================================================================== 
-   12. Badges, statuses and alerts
-   ========================================================================== */
-
 .badge,
 .status-badge,
 .confidence-badge {
@@ -1315,9 +1263,6 @@ input[type="file"]::file-selector-button {
   border-color: rgba(118, 82, 29, 0.18);
 }
 
-/* ========================================================================== 
-   13. Tables for future shipment/document views
-   ========================================================================== */
 
 .table-shell,
 .data-table-shell {
@@ -1385,10 +1330,6 @@ tbody tr:hover,
   font-weight: 750;
 }
 
-/* ========================================================================== 
-   14. Footer
-   ========================================================================== */
-
 .footer {
   flex: 0 0 auto;
   border-top: 1px solid var(--border-subtle);
@@ -1410,10 +1351,6 @@ tbody tr:hover,
   color: var(--text-muted);
   font-size: var(--font-size-sm);
 }
-
-/* ========================================================================== 
-   15. Floating actions
-   ========================================================================== */
 
 .scroll-top-button {
   position: fixed;
@@ -1447,10 +1384,6 @@ tbody tr:hover,
 .scroll-top-button:active {
   transform: translateY(1px);
 }
-
-/* ========================================================================== 
-   16. Utility classes for new React screens
-   ========================================================================== */
 
 .stack-sm > * + * {
   margin-top: var(--space-2);
@@ -1501,9 +1434,6 @@ tbody tr:hover,
   background: var(--border-subtle);
 }
 
-/* ========================================================================== 
-   17. Desktop scaling and safety breakpoints
-   ========================================================================== */
 
 @media (max-width: 1300px) {
   :root {

@@ -3,10 +3,10 @@ export default function Footer(){
         <footer className="footer">
             <div className="footer-inner">
                 <p className="footer-text">
-                    Automatyzacja procesu nominacji armatorskich.
+                    Vessel Nomination Process Automation.
                 </p>
                 <p className="footer-text">
-                    Administratorem systemu jest kodON.
+                    kodON is system administrator.
                 </p>
             </div>
         </footer>

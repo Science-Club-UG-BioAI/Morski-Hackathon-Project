@@ -614,10 +614,31 @@ export default function ResultsPriv({ user, resultData }) {
         return Number(jobId);
     };
 
+    const buildPdfVerificationConflicts = () => {
+        const conflicts = data.verification_conflicts || {};
+        const pdfConflicts = {};
+
+        Object.entries(conflicts).forEach(([sourceKey, conflict]) => {
+            const fieldLabel = verificationFieldMap[sourceKey];
+
+            if (!fieldLabel) {
+                return;
+            }
+
+            pdfConflicts[sourceKey] = {
+                field: fieldLabel,
+                extracted: normalizeValue(conflict.extracted),
+                verified: normalizeValue(conflict.verified),
+            };
+        });
+        return pdfConflicts;
+    };
+
     const buildBasicPdfJson = () => {
         const jobId = getJobId();
+        const verificationConflicts = buildPdfVerificationConflicts();
 
-        return {
+        const target = {
             job_id: jobId,
             overview: {
                 Name: normalizeValue(data.overview?.Name),
@@ -632,6 +653,12 @@ export default function ResultsPriv({ user, resultData }) {
                 ])
             ),
         };
+
+        if (Object.keys(verificationConflicts).length > 0) {
+            target.verification_conflicts = verificationConflicts;
+        }
+
+        return target;
     };
 
     const buildAdditionalRequestPayload = (item) => {

@@ -68,10 +68,11 @@ def build_key_value_table(data: dict[str, Any], styles: dict) -> Table:
 
     for key, value in data.items():
         if isinstance(value, list) and len(value) == 2:
-            value_text = (
-                f"<b>Extracted:</b> {safe_text(value[0])}<br/>"
-                f"<b>Verified:</b> {safe_text(value[1])}"
-            )
+            if isinstance(value, dict) and "extracted" in value and "verified" in value:
+                value_text = (
+                    f"<b>Extracted:</b> {escape_text(value['extracted'])}<br/>"
+                    f"<b>Verified:</b> {escape_text(value['verified'])}"
+                )
         else:
             value_text = safe_text(value)
 
@@ -308,9 +309,10 @@ def build_pdf_from_json(data: dict[str, Any], output_path: str | Path) -> Path:
             story.append(Spacer(1, 0.25 * cm))
 
     story.append(PageBreak())
+    adds = None
     if isinstance(additional_requests, list):
         adds = build_requests_table(additional_requests, styles)
-         
+
     if adds is not None:
         story.append(make_paragraph("Additional requests", styles["section"]))
         story.append(adds)

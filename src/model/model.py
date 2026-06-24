@@ -181,7 +181,7 @@ def merge_email_extractions(
                 continue
 
             if old_value != new_value:
-                merged[field_name] = new_value
+                merged[field_name] = old_value
 
     return EmailExtraction(**merged)
 

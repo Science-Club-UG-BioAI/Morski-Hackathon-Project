@@ -310,10 +310,10 @@ def build_pdf_from_json(data: dict[str, Any], output_path: str | Path) -> Path:
     story.append(PageBreak())
     if isinstance(additional_requests, list):
         adds = build_requests_table(additional_requests, styles)
-        story.append(adds)
-        
+         
     if adds is not None:
         story.append(make_paragraph("Additional requests", styles["section"]))
+        story.append(adds)
 
     doc.build(story)
 

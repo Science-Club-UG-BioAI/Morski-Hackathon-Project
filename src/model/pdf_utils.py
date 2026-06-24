@@ -70,14 +70,14 @@ def build_key_value_table(data: dict[str, Any], styles: dict) -> Table:
         if isinstance(value, dict) and "extracted" in value and "verified" in value:
             value_text = (
                 f"<b>Extracted:</b> {escape_text(value['extracted'])}<br/>"
-                f"<b>Verified:</b> {escape_text(value['verified'])}"
+                f"<b><font color='red'>Verified:</b>{escape_text(value['verified'])}</font>"
             )
             allow_markup = True
 
         elif isinstance(value, list) and len(value) == 2:
             value_text = (
                 f"<b>Extracted:</b> {escape_text(value[0])}<br/>"
-                f"<b>Verified:</b> {escape_text(value[1])}"
+                f"<b><font color='red'>Verified:</b> {escape_text(value[1])} </font>"
             )
             allow_markup = True
 

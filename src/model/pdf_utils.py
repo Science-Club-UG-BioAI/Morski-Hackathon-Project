@@ -67,18 +67,27 @@ def build_key_value_table(data: dict[str, Any], styles: dict) -> Table:
     rows = []
 
     for key, value in data.items():
-        if isinstance(value, list) and len(value) == 2:
-            if isinstance(value, dict) and "extracted" in value and "verified" in value:
-                value_text = (
-                    f"<b>Extracted:</b> {escape_text(value['extracted'])}<br/>"
-                    f"<b>Verified:</b> {escape_text(value['verified'])}"
-                )
+        if isinstance(value, dict) and "extracted" in value and "verified" in value:
+            value_text = (
+                f"<b>Extracted:</b> {escape_text(value['extracted'])}<br/>"
+                f"<b>Verified:</b> {escape_text(value['verified'])}"
+            )
+            allow_markup = True
+
+        elif isinstance(value, list) and len(value) == 2:
+            value_text = (
+                f"<b>Extracted:</b> {escape_text(value[0])}<br/>"
+                f"<b>Verified:</b> {escape_text(value[1])}"
+            )
+            allow_markup = True
+
         else:
-            value_text = safe_text(value)
+            value_text = value
+            allow_markup = False
 
         rows.append([
-            make_paragraph(f"<b>{key}</b>", styles["table_key"], allow_markup=True),
-            make_paragraph(value_text, styles["table_value"]),
+            make_paragraph(f"<b>{escape_text(key)}</b>", styles["table_key"], allow_markup=True),
+            make_paragraph(value_text, styles["table_value"], allow_markup=allow_markup),
         ])
 
     if not rows:

@@ -150,41 +150,134 @@ def _to_dict(item: EmailExtraction | dict | str) -> dict[str, Any]:
 
     raise TypeError(f"Unsupported item type: {type(item)}")
 
+EMPTY_STRINGS = {
+    "",
+    "none",
+    "null",
+    "n/a",
+    "na",
+    "not applicable",
+    "not provided",
+    "unknown",
+    "not specified",
+    "-",
+    "—",
+}
+
+
+VESSEL_FIELDS = {
+    "ship_name",
+    "port_name",
+    "eta",
+    "imo_number",
+    "ship_width",
+    "ship_length",
+    "ship_submersion",
+    "ship_weigth",
+    "number_of_crew_members",
+}
+
+
+MAIL_ONLY_FIELDS = {
+    "refueling_is_needed",
+    "fuel_amount",
+    "fuel_category",
+    "food",
+    "food_description",
+    "cargo_type",
+    "cargo_weight",
+    "needs_unloading",
+    "needs_loading",
+    "hazmat_and_dangerous_goods",
+    "customs_clearance",
+}
+
+
+def _to_dict(item: EmailExtraction | dict | str) -> dict[str, Any]:
+    if isinstance(item, EmailExtraction):
+        return item.model_dump(
+            exclude_none=True,
+            exclude_unset=True,
+        )
+
+    if isinstance(item, dict):
+        return item
+
+    if isinstance(item, str):
+        return json.loads(item)
+
+    raise TypeError(f"Unsupported item type: {type(item)}")
+
 
 def _normalize_value(value: Any) -> Any:
     if isinstance(value, str):
         value = value.strip()
-        if value == "":
+
+        if value.lower() in EMPTY_STRINGS:
             return None
+
+        return value
+
+    if isinstance(value, list) and len(value) == 0:
+        return None
+
+    if isinstance(value, dict) and len(value) == 0:
+        return None
+
     return value
 
 
-def merge_email_extractions(
-    items: Iterable[EmailExtraction | dict | str],
+def _merge_fields(
+    merged: dict[str, Any],
+    data: dict[str, Any],
+    allowed_fields: set[str],
+    overwrite: bool = False,
+) -> None:
+    for field_name in allowed_fields:
+        new_value = _normalize_value(data.get(field_name))
+
+        if new_value is None:
+            continue
+
+        old_value = _normalize_value(merged.get(field_name))
+
+        if old_value is None or overwrite:
+            merged[field_name] = new_value
+
+
+def merge_email_and_pdf_extractions(
+    mail_items: Iterable[EmailExtraction | dict | str],
+    pdf_items: Iterable[EmailExtraction | dict | str],
 ) -> EmailExtraction:
     merged: dict[str, Any] = {
         field_name: None for field_name in EmailExtraction.model_fields.keys()
     }
 
-    for index, item in enumerate(items):
+    for item in pdf_items:
         data = _to_dict(item)
+        _merge_fields(
+            merged=merged,
+            data=data,
+            allowed_fields=VESSEL_FIELDS,
+            overwrite=False,
+        )
 
-        for field_name in merged.keys():
-            new_value = _normalize_value(data.get(field_name))
-            old_value = _normalize_value(merged.get(field_name))
-
-            if new_value is None:
-                continue
-
-            if old_value is None:
-                merged[field_name] = new_value
-                continue
-
-            if old_value != new_value:
-                merged[field_name] = old_value
+    for item in mail_items:
+        data = _to_dict(item)
+        _merge_fields(
+            merged=merged,
+            data=data,
+            allowed_fields=MAIL_ONLY_FIELDS,
+            overwrite=True,
+        )
+        _merge_fields(
+            merged=merged,
+            data=data,
+            allowed_fields=VESSEL_FIELDS,
+            overwrite=False,
+        )
 
     return EmailExtraction(**merged)
-
 
 def extract_from_mail(content: str) -> EmailExtraction:
     response = chat(

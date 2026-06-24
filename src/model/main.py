@@ -20,7 +20,7 @@ from utils import (
     get_next_free_id,
 )
 from model import (
-    merge_email_extractions,
+    merge_email_and_pdf_extractions,
     extract_from_mail,
     EmailExtractionConflictError,
     get_additional_tasks,
@@ -64,7 +64,7 @@ async def full_ports(
     final_json = None
 
     try:
-        final_json = merge_email_extractions(jsons)
+        final_json = merge_email_and_pdf_extractions(mail_items=[jsons[-1]], pdf_items=jsons[:-1])
     except EmailExtractionConflictError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:

@@ -246,13 +246,12 @@ def load(id: int):
 
 
 @app.post("/save/")
-def save(target: dict[str, Any]):
+def save(target: dict[str, Any], job_id: Optional[int] = None):
     try:
-        job_id = get_next_free_id()
+        if job_id is None:
+            job_id = get_next_free_id()
+            
         save_json(job_id, target)
-
-    except FileExistsError as e:
-        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

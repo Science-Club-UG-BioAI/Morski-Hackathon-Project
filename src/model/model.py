@@ -91,7 +91,7 @@ class EmailExtraction(BaseModel):
     ship_width: Optional[str]
     ship_length: Optional[str]
     ship_submersion: Optional[str]
-    ship_weigth: Optional[str]
+    ship_weight: Optional[str]
 
     number_of_crew_members: Optional[str]
     hazmat_and_dangerous_goods: Optional[str]
@@ -173,7 +173,7 @@ VESSEL_FIELDS = {
     "ship_width",
     "ship_length",
     "ship_submersion",
-    "ship_weigth",
+    "ship_weight",
     "number_of_crew_members",
 }
 

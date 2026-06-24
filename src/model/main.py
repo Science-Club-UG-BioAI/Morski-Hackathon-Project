@@ -104,7 +104,7 @@ async def full_ports(
         "ship_width": "Ship Width",
         "ship_length": "Ship Length",
         "ship_submersion": "Ship Submersion",
-        "ship_weigth": "Ship Weight",
+        "ship_weight": "Ship Weight",
         "number_of_crew_members": "Number of Crew Members",
     }
 
